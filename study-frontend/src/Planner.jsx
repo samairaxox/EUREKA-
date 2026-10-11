@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import PdfUpload from './PdfUpload';
 import './Studymind.css';
 const API = 'http://localhost:8000';
@@ -41,6 +43,64 @@ export default function Planner() {
       setError('Could not reach the backend. Make sure uvicorn is running on port 8000.');
     }
     setLoading(false);
+  };
+
+  const downloadSchedule = () => {
+    if (schedule.length === 0) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const compactTopic = topic.trim().replace(/\s+/g, ' ');
+    const topicLabel = compactTopic.length > 180 ? `${compactTopic.slice(0, 177)}…` : compactTopic;
+    const topicLines = doc.splitTextToSize(`Topic: ${topicLabel}`, pageWidth - 28);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(28, 38, 30);
+    doc.text('Study Schedule — EUREKA', 14, 19);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(65, 78, 67);
+    doc.text(topicLines, 14, 29);
+    const examY = 29 + topicLines.length * 5;
+    doc.text(`Exam date: ${examDate}`, 14, examY);
+
+    autoTable(doc, {
+      startY: examY + 7,
+      head: [['Day', 'Date', 'Task', 'Duration']],
+      body: schedule.map(row => [
+        row.day ?? '',
+        fmtDate(row.date) ?? '',
+        row.task ?? '',
+        row.duration ?? '',
+      ]),
+      theme: 'grid',
+      styles: {
+        font: 'helvetica',
+        fontSize: 9,
+        cellPadding: 4,
+        lineColor: [205, 215, 206],
+        lineWidth: 0.2,
+        textColor: [35, 45, 37],
+        overflow: 'linebreak',
+      },
+      headStyles: {
+        fillColor: [25, 34, 27],
+        textColor: [242, 247, 242],
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: { fillColor: [232, 240, 233] },
+      columnStyles: {
+        0: { cellWidth: 27 },
+        1: { cellWidth: 30 },
+        3: { cellWidth: 32 },
+      },
+      margin: { left: 14, right: 14 },
+    });
+
+    const safeTopic = compactTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'study';
+    doc.save(`${safeTopic}-schedule.pdf`);
   };
 
   return (
@@ -115,6 +175,12 @@ export default function Planner() {
             <p className="empty-state__text">Enter a topic and dates, then click Generate</p>
           </div>
         ) : (
+          <>
+          <div className="schedule-actions">
+            <button className="btn btn--primary" type="button" onClick={downloadSchedule}>
+              Download Schedule PDF
+            </button>
+          </div>
           <table className="schedule" id="schedule-table">
             <thead className="schedule__head">
               <tr>
@@ -140,6 +206,7 @@ export default function Planner() {
               ))}
             </tbody>
           </table>
+          </>
         )}
 
       </div>
