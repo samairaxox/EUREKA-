@@ -576,7 +576,16 @@ input[type="date"]::-webkit-datetime-edit { color: var(--text-muted); }
   letter-spacing: 0.08em;
   white-space: nowrap;
 }
-.practice-test-timer { font-variant-numeric: tabular-nums; }
+.practice-test-timer {
+  padding: 9px 14px;
+  border: 1px solid var(--green-border);
+  border-radius: var(--radius);
+  background: var(--green-dim);
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
 .practice-test-timer.urgent { color: #e07868; animation: timerPulse 1s ease-in-out infinite alternate; }
 @keyframes timerPulse { to { opacity: 0.55; } }
 .practice-test-progress { color: var(--text-dim); }

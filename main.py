@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from agents import summarizer_agent, planner_agent
 from eureka_graph import app_graph
-from rag_engine import build_vectorstore, rag_query
 import fitz  # pymupdf
 import io
 import uuid
@@ -135,6 +134,10 @@ class RagPlanRequest(BaseModel):
 async def rag_upload(file: UploadFile = File(...)):
     """Upload a PDF, build a FAISS vectorstore, return a session_id."""
     try:
+        # Keep the base API available even if optional embedding dependencies
+        # (or their native model runtime) cannot initialize on this machine.
+        from rag_engine import build_vectorstore
+
         pdf_bytes = await file.read()
         vectorstore = build_vectorstore(pdf_bytes)
         session_id = str(uuid.uuid4())
@@ -151,6 +154,8 @@ def rag_quiz(req: RagQuizRequest):
     if not vectorstore:
         raise HTTPException(status_code=404, detail="session_id not found. Upload a PDF first via /rag/upload.")
     try:
+        from rag_engine import rag_query
+
         prompt = (
             f"Generate {req.num_questions} multiple-choice questions (MCQs) from the document content. "
             "For each question provide 4 options labelled A–D and mark the correct answer. "
@@ -169,6 +174,8 @@ def rag_summarize(req: RagSummarizeRequest):
     if not vectorstore:
         raise HTTPException(status_code=404, detail="session_id not found. Upload a PDF first via /rag/upload.")
     try:
+        from rag_engine import rag_query
+
         prompt = (
             "Provide a clear, structured summary of the document. "
             "Include: main topic, key points (as bullet points), and a brief conclusion."
@@ -186,6 +193,8 @@ def rag_flashcards(req: RagFlashcardsRequest):
     if not vectorstore:
         raise HTTPException(status_code=404, detail="session_id not found. Upload a PDF first via /rag/upload.")
     try:
+        from rag_engine import rag_query
+
         prompt = (
             f"Create {req.num_cards} study flashcards from the document content. "
             "For each card, clearly label the front as 'Front:' with a concise term or question, "
@@ -204,6 +213,8 @@ def rag_plan(req: RagPlanRequest):
     if not vectorstore:
         raise HTTPException(status_code=404, detail="session_id not found. Upload a PDF first via /rag/upload.")
     try:
+        from rag_engine import rag_query
+
         prompt = (
             f"Create a practical study plan based on the document content, ending on the exam date {req.exam_date}. "
             "Organize the plan chronologically from today through the exam date. "

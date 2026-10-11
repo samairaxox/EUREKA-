@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 
 const API = "http://localhost:8000";
-const QUESTION_COUNTS = [10, 20, 30];
 
 function formatTime(seconds) {
   const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -12,8 +11,8 @@ function formatTime(seconds) {
 
 export default function PracticeTest() {
   const [topic, setTopic] = useState("");
-  const [numQuestions, setNumQuestions] = useState(10);
-  const [timeLimit, setTimeLimit] = useState(15);
+  const [numQuestions, setNumQuestions] = useState("10");
+  const [timeLimit, setTimeLimit] = useState("15");
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -28,18 +27,28 @@ export default function PracticeTest() {
       setView("results");
       return undefined;
     }
-    const timer = window.setTimeout(() => setTimeRemaining(value => value - 1), 1000);
+    const timer = window.setTimeout(() => setTimeRemaining(value => Math.max(0, value - 1)), 1000);
     return () => window.clearTimeout(timer);
   }, [view, timeRemaining]);
 
   const startTest = async () => {
     if (!topic.trim()) return;
+    const questionCount = Number(numQuestions);
+    const timeLimitMinutes = Number(timeLimit);
+    if (!Number.isInteger(questionCount) || questionCount < 1) {
+      setError("Enter a whole number of questions greater than 0.");
+      return;
+    }
+    if (!Number.isInteger(timeLimitMinutes) || timeLimitMinutes < 1 || timeLimitMinutes > 180) {
+      setError("Enter a whole-number time limit between 1 and 180 minutes.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
       const response = await axios.post(`${API}/quiz`, {
         topic: topic.trim(),
-        num_questions: numQuestions,
+        num_questions: questionCount,
       });
       if (!Array.isArray(response.data?.questions) || response.data.questions.length === 0) {
         throw new Error("The backend returned no questions. Try another topic.");
@@ -47,7 +56,7 @@ export default function PracticeTest() {
       setQuestions(response.data.questions);
       setAnswers({});
       setCurrentIndex(0);
-      setTimeRemaining(timeLimit * 60);
+      setTimeRemaining(timeLimitMinutes * 60);
       setView("taking");
     } catch (requestError) {
       setError(requestError.message === "The backend returned no questions. Try another topic."
@@ -69,10 +78,10 @@ export default function PracticeTest() {
       <section className="practice-test" aria-label="Practice test">
         <header className="practice-test-header">
           <div className="practice-test-topic">{topic}</div>
-          <div className={`practice-test-timer${timeRemaining <= 60 ? " urgent" : ""}`} role="timer" aria-live="off">
+          <div className="practice-test-progress">{currentIndex + 1} / {questions.length}</div>
+          <div className={`practice-test-timer${timeRemaining < 60 ? " urgent" : ""}`} role="timer" aria-live="off">
             <span aria-hidden="true">◷</span> {formatTime(timeRemaining)}
           </div>
-          <div className="practice-test-progress">{currentIndex + 1} / {questions.length}</div>
         </header>
 
         <div className="practice-test-content">
@@ -197,20 +206,15 @@ export default function PracticeTest() {
 
       <div className="practice-setup-row">
         <div className="field">
-          <span className="field-label">Number of Questions</span>
-          <div className="practice-choice-group" role="group" aria-label="Number of questions">
-            {QUESTION_COUNTS.map(count => (
-              <button
-                type="button"
-                key={count}
-                className={`practice-choice${numQuestions === count ? " selected" : ""}`}
-                aria-pressed={numQuestions === count}
-                onClick={() => setNumQuestions(count)}
-              >
-                {count}
-              </button>
-            ))}
-          </div>
+          <label className="field-label" htmlFor="practice-question-count">Number of Questions</label>
+          <input
+            id="practice-question-count"
+            type="number"
+            min="1"
+            step="1"
+            value={numQuestions}
+            onChange={event => setNumQuestions(event.target.value)}
+          />
         </div>
         <div className="field">
           <label className="field-label" htmlFor="practice-time-limit">Time Limit (minutes)</label>
@@ -219,15 +223,21 @@ export default function PracticeTest() {
             type="number"
             min="1"
             max="180"
+            step="1"
             value={timeLimit}
-            onChange={event => setTimeLimit(Math.min(180, Math.max(1, parseInt(event.target.value, 10) || 1)))}
+            onChange={event => setTimeLimit(event.target.value)}
           />
         </div>
       </div>
 
       {error && <p className="error-msg" role="alert">{error}</p>}
-      <button type="button" className="submit-btn" onClick={startTest} disabled={loading || !topic.trim()}>
-        {loading ? <><span className="spin" /> Preparing test...</> : `Start ${numQuestions}-Question Test`}
+      <button
+        type="button"
+        className="submit-btn"
+        onClick={startTest}
+        disabled={loading || !topic.trim() || !Number.isInteger(Number(numQuestions)) || Number(numQuestions) < 1 || !Number.isInteger(Number(timeLimit)) || Number(timeLimit) < 1 || Number(timeLimit) > 180}
+      >
+        {loading ? <><span className="spin" /> Preparing test...</> : `Start ${Number(numQuestions) || ""}-Question Test`}
       </button>
     </section>
   );
