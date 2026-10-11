@@ -6,7 +6,7 @@ import Flashcards from './Flashcards';
 import PracticeTest from './PracticeTest';
 import AnswerRush from './AnswerRush';
 import RagStudy from './RagStudy';
-import TriviaBlast from './TriviaBlast';
+import TriviaBlast, { DAILY_TRIVIA_EVENT, getDailyTriviaStatus } from './TriviaBlast';
 import StreakTracker from './StreakTracker';
 import { getStreakStats, STUDY_DATES_EVENT } from './streak';
 import './App.css';
@@ -29,6 +29,7 @@ const MODES = [...STUDY_MODES, ...GAME_MODES, STREAK_MODE];
 function App() {
   const [currentPage, setCurrentPage] = useState('summarizer');
   const [heroStreak, setHeroStreak] = useState(() => getStreakStats().currentStreak);
+  const [dailyTrivia, setDailyTrivia] = useState(() => getDailyTriviaStatus());
   const selectedMode = MODES.find(mode => mode.id === currentPage);
   const ModeComponent = selectedMode.Component;
 
@@ -43,8 +44,24 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const refreshDailyTrivia = () => setDailyTrivia(getDailyTriviaStatus());
+    window.addEventListener(DAILY_TRIVIA_EVENT, refreshDailyTrivia);
+    window.addEventListener('storage', refreshDailyTrivia);
+    refreshDailyTrivia();
+    return () => {
+      window.removeEventListener(DAILY_TRIVIA_EVENT, refreshDailyTrivia);
+      window.removeEventListener('storage', refreshDailyTrivia);
+    };
+  }, []);
+
   const scrollToWorkspace = () => {
     document.getElementById('eureka-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const openDailyTrivia = () => {
+    setCurrentPage('trivia-blast');
+    window.requestAnimationFrame(scrollToWorkspace);
   };
 
   return (
@@ -75,6 +92,17 @@ function App() {
           <span aria-hidden="true">↓</span>
         </button>
       </header>
+
+      <section className="daily-trivia-home" aria-label="Daily Trivia">
+        <button className={`daily-trivia-home-card${dailyTrivia.playedToday ? ' completed' : ''}`} type="button" onClick={openDailyTrivia}>
+          <span className="daily-trivia-home-icon" aria-hidden="true">🧠</span>
+          <span className="daily-trivia-home-copy">
+            <strong>{dailyTrivia.playedToday ? 'Completed today! ✅' : 'Daily Trivia ✨'}</strong>
+            <span>{dailyTrivia.playedToday ? 'Come back tomorrow' : 'Play today’s 5 questions!'}</span>
+          </span>
+          <span className="daily-trivia-home-action" aria-hidden="true">{dailyTrivia.playedToday ? 'DONE' : 'PLAY'} <span>→</span></span>
+        </button>
+      </section>
 
       <main className="eureka-workspace" id="eureka-workspace">
         <aside className="eureka-sidebar" aria-label="Study mode navigation">
