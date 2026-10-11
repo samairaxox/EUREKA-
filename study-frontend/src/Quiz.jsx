@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
+import { markTodayAsStudied } from './streak';
 
 const API = "http://localhost:8000";
 
 export default function Quiz() {
+  useEffect(() => { markTodayAsStudied(); }, []);
   const [topic, setTopic] = useState("");
   const [numQ, setNumQ] = useState(5);
   const [questions, setQuestions] = useState([]);

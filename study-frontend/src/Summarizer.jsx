@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
+import { markTodayAsStudied } from './streak';
 
 const API = "http://localhost:8000";
 
 export default function Summarizer() {
+  useEffect(() => { markTodayAsStudied(); }, []);
   const [text, setText] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { markTodayAsStudied } from './streak';
 
 const API = "http://localhost:8000";
 
@@ -10,6 +11,7 @@ function formatTime(seconds) {
 }
 
 export default function PracticeTest() {
+  useEffect(() => { markTodayAsStudied(); }, []);
   const [topic, setTopic] = useState("");
   const [numQuestions, setNumQuestions] = useState("10");
   const [timeLimit, setTimeLimit] = useState("15");

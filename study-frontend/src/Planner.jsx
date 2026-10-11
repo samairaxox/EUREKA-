@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import PdfUpload from './PdfUpload';
 import './Studymind.css';
+import { markTodayAsStudied } from './streak';
 const API = 'http://localhost:8000';
 
 // Format YYYY-MM-DD → "25 May"
@@ -15,6 +16,7 @@ function fmtDate(dateStr) {
 }
 
 export default function Planner() {
+  useEffect(() => { markTodayAsStudied(); }, []);
   const [topic, setTopic] = useState('');
   const [startDate, setStartDate] = useState('');
   const [examDate, setExamDate] = useState('');

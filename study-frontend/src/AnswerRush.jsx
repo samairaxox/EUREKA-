@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import "./AnswerRush.css";
+import { markTodayAsStudied } from './streak';
 
 const API = "http://localhost:8000";
 const FEEDBACK_TIME = 420;
 
 export default function AnswerRush() {
+  useEffect(() => { markTodayAsStudied(); }, []);
   const [topic, setTopic] = useState("");
   const [questions, setQuestions] = useState([]);
   const [questionIndex, setQuestionIndex] = useState(0);

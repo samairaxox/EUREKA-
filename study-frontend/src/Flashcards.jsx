@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { markTodayAsStudied } from './streak';
 
 const API = "http://localhost:8000";
 
 export default function Flashcards() {
+  useEffect(() => { markTodayAsStudied(); }, []);
   const [mode, setMode] = useState("ai");
   const [topic, setTopic] = useState("");
   const [numCards, setNumCards] = useState(10);

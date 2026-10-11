@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { markTodayAsStudied } from './streak';
 
 const QUESTION_SECONDS = 10;
 
@@ -45,6 +46,7 @@ function shuffle(items) {
 }
 
 export default function TriviaBlast() {
+  useEffect(() => { markTodayAsStudied(); }, []);
   const [round, setRound] = useState([]);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);

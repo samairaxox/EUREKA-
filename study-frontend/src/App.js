@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Summarizer from './Summarizer';
 import Planner from './Planner';
 import Quiz from './Quiz';
@@ -7,6 +7,8 @@ import PracticeTest from './PracticeTest';
 import AnswerRush from './AnswerRush';
 import RagStudy from './RagStudy';
 import TriviaBlast from './TriviaBlast';
+import StreakTracker from './StreakTracker';
+import { getStreakStats, STUDY_DATES_EVENT } from './streak';
 import './App.css';
 
 const STUDY_MODES = [
@@ -21,12 +23,25 @@ const GAME_MODES = [
   { id: 'answer-rush', icon: '⚡', name: 'Answer Rush', Component: AnswerRush },
   { id: 'trivia-blast', icon: '🧠', name: 'Trivia Blast', Component: TriviaBlast },
 ];
-const MODES = [...STUDY_MODES, ...GAME_MODES];
+const STREAK_MODE = { id: 'streak', icon: '🔥', name: 'My Streak', Component: StreakTracker };
+const MODES = [...STUDY_MODES, ...GAME_MODES, STREAK_MODE];
 
 function App() {
   const [currentPage, setCurrentPage] = useState('summarizer');
+  const [heroStreak, setHeroStreak] = useState(() => getStreakStats().currentStreak);
   const selectedMode = MODES.find(mode => mode.id === currentPage);
   const ModeComponent = selectedMode.Component;
+
+  useEffect(() => {
+    const refreshStreak = () => setHeroStreak(getStreakStats().currentStreak);
+    window.addEventListener(STUDY_DATES_EVENT, refreshStreak);
+    window.addEventListener('storage', refreshStreak);
+    refreshStreak();
+    return () => {
+      window.removeEventListener(STUDY_DATES_EVENT, refreshStreak);
+      window.removeEventListener('storage', refreshStreak);
+    };
+  }, []);
 
   const scrollToWorkspace = () => {
     document.getElementById('eureka-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -51,6 +66,7 @@ function App() {
             <span>⚡ Real-time Quiz</span>
             <span>📄 PDF Powered</span>
           </div>
+          <div className="eureka-hero-streak-pill" aria-live="polite">🔥 {heroStreak} day streak</div>
           <button type="button" className="eureka-scroll-button" onClick={scrollToWorkspace}>
             Explore your study space <span aria-hidden="true">↓</span>
           </button>
@@ -82,13 +98,20 @@ function App() {
               </button>
             ))}
           </div>
+          <div className="eureka-sidebar-section progress-section">
+            <h2>Your Progress</h2>
+            <button type="button" className={`eureka-sidebar-item streak-item${currentPage === STREAK_MODE.id ? ' active' : ''}`} onClick={() => setCurrentPage(STREAK_MODE.id)} aria-current={currentPage === STREAK_MODE.id ? 'page' : undefined}>
+              <span className="eureka-sidebar-icon" aria-hidden="true">🔥</span>
+              <span>My Streak</span>
+            </button>
+          </div>
         </aside>
 
         <section className="eureka-main-content" aria-labelledby="selected-mode-title">
           <header className="eureka-content-heading">
             <span className={`eureka-content-icon${selectedMode.id === 'rag' ? ' rag-icon' : ''}`} aria-hidden="true">{selectedMode.icon}</span>
             <div>
-              <div className="eureka-content-eyebrow">{GAME_MODES.some(mode => mode.id === selectedMode.id) ? 'GAME ZONE' : 'STUDY TOOLS'}</div>
+              <div className="eureka-content-eyebrow">{GAME_MODES.some(mode => mode.id === selectedMode.id) ? 'GAME ZONE' : selectedMode.id === 'streak' ? 'YOUR PROGRESS' : 'STUDY TOOLS'}</div>
               <h2 id="selected-mode-title">{selectedMode.name}</h2>
             </div>
           </header>

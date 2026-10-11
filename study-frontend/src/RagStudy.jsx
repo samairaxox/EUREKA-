@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
+import { markTodayAsStudied } from './streak';
 
 const API = "http://localhost:8000";
 const MODES = [
@@ -39,6 +40,7 @@ function parseFlashcards(raw) {
 }
 
 export default function RagStudy() {
+  useEffect(() => { markTodayAsStudied(); }, []);
   const fileRef = useRef(null);
   const [file, setFile] = useState(null);
   const [sessionId, setSessionId] = useState("");
