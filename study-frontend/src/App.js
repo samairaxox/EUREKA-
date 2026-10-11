@@ -5,6 +5,7 @@ import Quiz from './Quiz';
 import Flashcards from './Flashcards';
 import RagStudy from './RagStudy';
 import PracticeTest from './PracticeTest';
+import AnswerRush from './AnswerRush';
 import './App.css';
 
 const TABS = [
@@ -14,6 +15,7 @@ const TABS = [
   { id: 'flashcards', label: 'Flashcards'  },
   { id: 'rag',        label: 'RAG Study'   },
   { id: 'practice-test', label: 'Practice Test' },
+  { id: 'answer-rush', label: '⚡ Answer Rush' },
 ];
 
 const AGENTS = [
@@ -53,6 +55,12 @@ const AGENTS = [
     title: 'Timed Practice Test',
     desc: 'Take a timed test, answer one question at a time, and review your score and explanations at the end.',
   },
+  {
+    id: 'answer-rush',
+    mono: 'Answer Rush — EUREKA',
+    title: '⚡ Answer Rush',
+    desc: 'Race through ten rapid-fire questions, earn points, and build your streak before the clock runs out.',
+  },
 ];
 
 const PANEL_META = {
@@ -62,6 +70,7 @@ const PANEL_META = {
   flashcards: { mono: 'Flashcard Agent',  title: 'Review with flip-cards'                  },
   rag:        { mono: 'RAG Engine',       title: 'Quiz & summarise your own PDF documents' },
   'practice-test': { mono: 'Practice Test', title: 'Take a timed test and review your answers' },
+  'answer-rush': { mono: 'Answer Rush', title: 'Think fast. Keep the streak alive.' },
 };
 
 function App() {
@@ -89,13 +98,13 @@ function App() {
 
       <section className="hero">
         <div className="hero-left">
-          <div className="hero-eyebrow">Six study tools — one platform</div>
+          <div className="hero-eyebrow">Seven study tools — one platform</div>
           <h1 className="hero-title">
             Study Smarter.<br /><em>Not Harder.</em>
           </h1>
           <p className="hero-sub">
             A unified multi-agent study platform. Summarise notes, plan your revision,
-            test yourself with quizzes and timed practice tests, drill concepts with flashcards,
+            test yourself with quizzes, timed practice tests, and Answer Rush, drill concepts with flashcards,
             and study PDFs — all powered by Gemini AI and LangGraph.
           </p>
         </div>
@@ -106,7 +115,7 @@ function App() {
             <div className="hero-divider-line" />
           </div>
           {[
-            { n: '01', title: 'Choose a tool', desc: 'Pick from Summarizer, Planner, Quiz, Flashcards, RAG Study, or Practice Test below.' },
+            { n: '01', title: 'Choose a tool', desc: 'Pick from Summarizer, Planner, Quiz, Flashcards, RAG Study, Practice Test, or Answer Rush below.' },
             { n: '02', title: 'Provide input',   desc: 'Enter your notes, topic, or exam date depending on the agent.' },
             { n: '03', title: 'Get results',     desc: 'Gemini AI processes your input and returns structured output instantly.' },
           ].map(s => (
@@ -156,6 +165,7 @@ function App() {
             {activeTab === 'flashcards' && <Flashcards />}
             {activeTab === 'rag'        && <RagStudy />}
             {activeTab === 'practice-test' && <PracticeTest />}
+            {activeTab === 'answer-rush' && <AnswerRush />}
           </div>
         </div>
       </section>
