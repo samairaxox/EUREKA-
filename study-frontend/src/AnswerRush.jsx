@@ -82,7 +82,8 @@ export default function AnswerRush() {
     }
   };
 
-  const bubbleHitGround = event => {
+  const bubbleHitGround = (event, isCorrectBubble) => {
+    if (!isCorrectBubble) return;
     if (event.target !== event.currentTarget || event.animationName !== "bubble-fall" || phase !== "playing") return;
     setGameOverReason("ground");
     setPhase("ground-hit-feedback");
@@ -171,10 +172,10 @@ export default function AnswerRush() {
             return (
               <button
                 type="button"
-                className={`answer-rush-option${outcome}`}
+                className={`answer-rush-option bubble-${String.fromCharCode(97 + optionIndex)}${outcome}`}
                 key={`${questionIndex}-${optionIndex}`}
                 onClick={() => answerQuestion(option, optionIndex)}
-                onAnimationEnd={bubbleHitGround}
+                onAnimationEnd={event => bubbleHitGround(event, option === currentQuestion.answer)}
                 style={{ left: `${left}%`, "--bubble-left": `${left}%`, "--fall-duration": `${fallDuration}s`, "--drift": `${drift}px`, "--wobble-duration": `${1.8 + optionIndex * 0.27}s`, "--bubble-delay": `${optionIndex * 65}ms` }}
                 disabled={phase !== "playing"}
               >
