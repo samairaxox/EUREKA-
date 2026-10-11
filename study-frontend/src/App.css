@@ -49,6 +49,14 @@ button { color: inherit; }
 .eureka-scroll-button span { padding-left: 7px; }
 .eureka-hero-stats { display: flex; justify-content: center; flex-wrap: wrap; gap: 9px; margin: 0 0 24px; }
 .eureka-hero-stats span { padding: 8px 13px; border: 1px solid rgba(255,255,255,.65); border-radius: 999px; background: rgba(255,255,255,.5); box-shadow: 0 4px 14px rgba(90,75,150,.07); color: #6E60A4; font-size: .78rem; font-weight: 900; backdrop-filter: blur(8px); }
+.daily-quote-card { position: relative; width: min(620px, calc(100vw - 44px)); margin: 0 auto 17px; padding: 17px 20px 14px 56px; border: 1px solid rgba(255,255,255,.78); border-left: 4px solid #BCA9EF; border-radius: 16px; background: rgba(255,255,255,.78); box-shadow: 0 12px 32px rgba(83,69,136,.1); text-align: left; backdrop-filter: blur(12px); animation: quote-fade-in 900ms ease both; }
+.daily-quote-mark { position: absolute; top: 5px; left: 17px; color: #A999E7; font-family: Georgia,serif; font-size: 3.8rem; font-weight: 700; line-height: 1; }
+.daily-quote-card blockquote { margin: 0; color: #5B5276; font-family: Georgia,'Times New Roman',serif; font-size: clamp(.9rem,1.35vw,1.08rem); font-style: italic; font-weight: 600; line-height: 1.48; }
+.daily-quote-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 9px; }
+.daily-quote-footer cite { color: #8A7BB4; font-size: .71rem; font-style: normal; font-weight: 900; }
+.daily-quote-copy, .sidebar-daily-quote button { padding: 5px 10px; border: 1px solid #E4DBF7; border-radius: 999px; background: #F8F5FF; color: #7564BC; font-size: .65rem; font-weight: 900; cursor: pointer; }
+.daily-quote-copy:hover, .sidebar-daily-quote button:hover { background: #EEE8FF; }
+@keyframes quote-fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .eureka-scroll-cue { position: absolute; z-index: 2; bottom: 24px; left: 50%; display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid rgba(123,102,195,.22); border-radius: 50%; background: rgba(255,255,255,.4); color: #7567A9; font-size: 1.5rem; cursor: pointer; transform: translateX(-50%); animation: scroll-cue-bob 1.8s ease-in-out infinite; }
 .eureka-scroll-cue span { line-height: 1; }
 .eureka-hero-decor { position: absolute; z-index: 1; pointer-events: none; }
@@ -144,6 +152,13 @@ button { color: inherit; }
 .streak-badge.goat.earned .streak-badge-name, .streak-badge.goat.earned .streak-badge-days { color: #FFFFFF; }
 .streak-badge.locked { border-color: #ECEAF0; background: #F2F1F5; filter: grayscale(.9); opacity: .66; }
 .streak-badge.locked .streak-badge-icon { filter: grayscale(1); }
+.sidebar-daily-quote { margin-top: 20px; padding: 13px 12px; border: 1px solid #E9E0F8; border-left: 3px solid #C4B5FD; border-radius: 13px; background: linear-gradient(145deg,#FFFFFF,#F8F5FF); }
+.sidebar-daily-quote-label { margin-bottom: 7px; color: #9B8BC8; font-size: .56rem; font-weight: 1000; letter-spacing: .1em; }
+.sidebar-daily-quote blockquote { margin: 0; color: #615A73; font-family: Georgia,'Times New Roman',serif; font-size: .74rem; font-style: italic; line-height: 1.48; }
+.sidebar-daily-quote cite { display: block; margin-top: 6px; color: #9388AE; font-size: .59rem; font-style: normal; font-weight: 800; }
+.sidebar-daily-quote button { margin-top: 9px; padding: 4px 9px; font-size: .59rem; }
+.quote-copy-toast { position: fixed; z-index: 500; right: 24px; bottom: 24px; padding: 11px 17px; border: 1px solid #DED3F7; border-radius: 999px; background: #FFFFFF; box-shadow: 0 10px 30px rgba(74,58,119,.16); color: #6555A9; font-size: .8rem; font-weight: 900; animation: toast-appear 180ms ease both; }
+@keyframes toast-appear { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Shared cards, inputs, buttons and results */
 .panel-desc { margin-bottom: 22px; color: #888199; font-size: .88rem; line-height: 1.65; }
@@ -367,6 +382,9 @@ button.quiz-option { width: 100%; cursor: pointer; }
 @media (max-width: 540px) {
   .eureka-hero { min-height: 100vh; min-height: 100svh; }
   .eureka-hero-content h1 { font-size: 120px; letter-spacing: -.075em; transform: scaleX(.72); }
+  .daily-quote-card { padding: 13px 12px 12px 45px; }
+  .daily-quote-card blockquote { font-size: .86rem; }
+  .daily-quote-mark { left: 12px; font-size: 3.1rem; }
   .eureka-stars { left: 3%; font-size: 1.4rem; }
   .eureka-floating-study-icon { font-size: 1.6rem; }
   .study-icon-1 { top: 15%; left: 7%; }

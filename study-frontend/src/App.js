@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Summarizer from './Summarizer';
 import Planner from './Planner';
 import Quiz from './Quiz';
@@ -9,6 +9,7 @@ import RagStudy from './RagStudy';
 import TriviaBlast, { DAILY_TRIVIA_EVENT, getDailyTriviaStatus } from './TriviaBlast';
 import StreakTracker from './StreakTracker';
 import { getStreakStats, STUDY_DATES_EVENT } from './streak';
+import { getDailyQuote } from './quotes';
 import './App.css';
 
 const STUDY_MODES = [
@@ -30,6 +31,9 @@ function App() {
   const [currentPage, setCurrentPage] = useState('summarizer');
   const [heroStreak, setHeroStreak] = useState(() => getStreakStats().currentStreak);
   const [dailyTrivia, setDailyTrivia] = useState(() => getDailyTriviaStatus());
+  const [quoteCopied, setQuoteCopied] = useState(false);
+  const quoteToastTimer = useRef(null);
+  const dailyQuote = getDailyQuote();
   const selectedMode = MODES.find(mode => mode.id === currentPage);
   const ModeComponent = selectedMode.Component;
 
@@ -43,6 +47,8 @@ function App() {
       window.removeEventListener('storage', refreshStreak);
     };
   }, []);
+
+  useEffect(() => () => window.clearTimeout(quoteToastTimer.current), []);
 
   useEffect(() => {
     const refreshDailyTrivia = () => setDailyTrivia(getDailyTriviaStatus());
@@ -64,6 +70,27 @@ function App() {
     window.requestAnimationFrame(scrollToWorkspace);
   };
 
+  const copyDailyQuote = async () => {
+    const quoteText = `“${dailyQuote.quote}” — ${dailyQuote.author}`;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable');
+      await navigator.clipboard.writeText(quoteText);
+    } catch {
+      const helper = document.createElement('textarea');
+      helper.value = quoteText;
+      helper.setAttribute('readonly', '');
+      helper.style.position = 'fixed';
+      helper.style.opacity = '0';
+      document.body.appendChild(helper);
+      helper.select();
+      document.execCommand('copy');
+      helper.remove();
+    }
+    setQuoteCopied(true);
+    window.clearTimeout(quoteToastTimer.current);
+    quoteToastTimer.current = window.setTimeout(() => setQuoteCopied(false), 1800);
+  };
+
   return (
     <div className="app eureka-app">
       <header className="eureka-hero">
@@ -83,6 +110,14 @@ function App() {
             <span>⚡ Real-time Quiz</span>
             <span>📄 PDF Powered</span>
           </div>
+          <article className="daily-quote-card">
+            <span className="daily-quote-mark" aria-hidden="true">“</span>
+            <blockquote>{dailyQuote.quote}</blockquote>
+            <div className="daily-quote-footer">
+              <cite>— {dailyQuote.author}</cite>
+              <button type="button" className="daily-quote-copy" onClick={copyDailyQuote} aria-label="Copy daily quote">{quoteCopied ? 'Copied! ✨' : 'Copy quote'}</button>
+            </div>
+          </article>
           <div className="eureka-hero-streak-pill" aria-live="polite">🔥 {heroStreak} day streak</div>
           <button type="button" className="eureka-scroll-button" onClick={scrollToWorkspace}>
             Explore your study space <span aria-hidden="true">↓</span>
@@ -133,6 +168,12 @@ function App() {
               <span>My Streak</span>
             </button>
           </div>
+          <article className="sidebar-daily-quote">
+            <div className="sidebar-daily-quote-label">✦ TODAY’S THOUGHT</div>
+            <blockquote>{dailyQuote.quote}</blockquote>
+            <cite>— {dailyQuote.author}</cite>
+            <button type="button" onClick={copyDailyQuote}>{quoteCopied ? 'Copied! ✨' : 'Copy quote'}</button>
+          </article>
         </aside>
 
         <section className="eureka-main-content" aria-labelledby="selected-mode-title">
@@ -148,6 +189,7 @@ function App() {
           </div>
         </section>
       </main>
+      {quoteCopied && <div className="quote-copy-toast" role="status">Copied! ✨</div>}
       <footer className="eureka-app-footer">EUREKA <span>✦</span> Your AI Study Companion</footer>
     </div>
   );
