@@ -1,6 +1,5 @@
 import { useState } from "react";
 import axios from "axios";
-import PdfUpload from "./PdfUpload";
 
 const API = "http://localhost:8000";
 
@@ -27,16 +26,14 @@ export default function Summarizer() {
   return (
     <div>
       <div className="panel-desc">
-        Paste your study notes or upload a PDF. The AI distils the content into a
+        Paste your study notes. The AI distils the content into a
         concise summary and extracts 5 key points.
       </div>
 
-      <PdfUpload onExtract={(t) => { setText(t); setResult(null); }} />
-
-      <div className="field" style={{ marginTop: 16 }}>
+      <div className="field">
         <label className="field-label">Study Notes</label>
         <textarea
-          placeholder="Paste notes here, or upload a PDF above to auto-fill..."
+          placeholder="Paste your study notes here..."
           value={text}
           onChange={e => setText(e.target.value)}
         />

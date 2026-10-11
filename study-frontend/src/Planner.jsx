@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import PdfUpload from './PdfUpload';
 import './Studymind.css';
 const API = 'http://localhost:8000';
 
@@ -49,6 +50,12 @@ export default function Planner() {
         <h3 className="panel__title">Generate your revision schedule</h3>
       </div>
       <div className="panel__body">
+
+        <PdfUpload onExtract={(text) => {
+          setTopic(text);
+          setSchedule([]);
+          setError('');
+        }} />
 
         {/* Form row */}
         <div className="form-row">

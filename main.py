@@ -122,6 +122,14 @@ class RagQuizRequest(BaseModel):
 class RagSummarizeRequest(BaseModel):
     session_id: str
 
+class RagFlashcardsRequest(BaseModel):
+    session_id: str
+    num_cards: int = 10
+
+class RagPlanRequest(BaseModel):
+    session_id: str
+    exam_date: str
+
 # ── RAG endpoints ────────────────────────────────
 @app.post("/rag/upload")
 async def rag_upload(file: UploadFile = File(...)):
@@ -169,4 +177,40 @@ def rag_summarize(req: RagSummarizeRequest):
         return {"session_id": req.session_id, "summary": result}
     except Exception as e:
         print(f"RAG SUMMARIZE ERROR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/rag/flashcards")
+def rag_flashcards(req: RagFlashcardsRequest):
+    """Generate flashcards from a previously uploaded PDF."""
+    vectorstore = _rag_store.get(req.session_id)
+    if not vectorstore:
+        raise HTTPException(status_code=404, detail="session_id not found. Upload a PDF first via /rag/upload.")
+    try:
+        prompt = (
+            f"Create {req.num_cards} study flashcards from the document content. "
+            "For each card, clearly label the front as 'Front:' with a concise term or question, "
+            "and the back as 'Back:' with its definition or answer. Number every card."
+        )
+        result = rag_query(vectorstore, prompt)
+        return {"session_id": req.session_id, "num_cards": req.num_cards, "flashcards": result}
+    except Exception as e:
+        print(f"RAG FLASHCARDS ERROR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/rag/plan")
+def rag_plan(req: RagPlanRequest):
+    """Generate a study plan from a previously uploaded PDF and exam date."""
+    vectorstore = _rag_store.get(req.session_id)
+    if not vectorstore:
+        raise HTTPException(status_code=404, detail="session_id not found. Upload a PDF first via /rag/upload.")
+    try:
+        prompt = (
+            f"Create a practical study plan based on the document content, ending on the exam date {req.exam_date}. "
+            "Organize the plan chronologically from today through the exam date. "
+            "Break the material into focused sessions, include review and practice, and clearly label each date or day."
+        )
+        result = rag_query(vectorstore, prompt)
+        return {"session_id": req.session_id, "exam_date": req.exam_date, "study_plan": result}
+    except Exception as e:
+        print(f"RAG PLAN ERROR: {e}")
         raise HTTPException(status_code=500, detail=str(e))

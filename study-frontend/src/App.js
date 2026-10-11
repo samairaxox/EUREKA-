@@ -4,6 +4,7 @@ import Planner from './Planner';
 import Quiz from './Quiz';
 import Flashcards from './Flashcards';
 import RagStudy from './RagStudy';
+import PracticeTest from './PracticeTest';
 import './App.css';
 
 const TABS = [
@@ -12,6 +13,7 @@ const TABS = [
   { id: 'quiz',       label: 'Quiz'        },
   { id: 'flashcards', label: 'Flashcards'  },
   { id: 'rag',        label: 'RAG Study'   },
+  { id: 'practice-test', label: 'Practice Test' },
 ];
 
 const AGENTS = [
@@ -45,6 +47,12 @@ const AGENTS = [
     title: 'PDF RAG Study',
     desc: 'Upload any PDF. The AI indexes it with FAISS and generates quizzes or summaries directly from your document.',
   },
+  {
+    id: 'practice-test',
+    mono: 'Practice Test — EUREKA',
+    title: 'Timed Practice Test',
+    desc: 'Take a timed test, answer one question at a time, and review your score and explanations at the end.',
+  },
 ];
 
 const PANEL_META = {
@@ -53,6 +61,7 @@ const PANEL_META = {
   quiz:       { mono: 'Quiz Agent',       title: 'Test your understanding'                 },
   flashcards: { mono: 'Flashcard Agent',  title: 'Review with flip-cards'                  },
   rag:        { mono: 'RAG Engine',       title: 'Quiz & summarise your own PDF documents' },
+  'practice-test': { mono: 'Practice Test', title: 'Take a timed test and review your answers' },
 };
 
 function App() {
@@ -80,14 +89,14 @@ function App() {
 
       <section className="hero">
         <div className="hero-left">
-          <div className="hero-eyebrow">Five AI agents — one platform</div>
+          <div className="hero-eyebrow">Six study tools — one platform</div>
           <h1 className="hero-title">
             Study Smarter.<br /><em>Not Harder.</em>
           </h1>
           <p className="hero-sub">
             A unified multi-agent study platform. Summarise notes, plan your revision,
-            test yourself with quizzes, drill concepts with flashcards, and study PDFs — all powered
-            by Gemini AI and LangGraph.
+            test yourself with quizzes and timed practice tests, drill concepts with flashcards,
+            and study PDFs — all powered by Gemini AI and LangGraph.
           </p>
         </div>
         <div className="hero-right">
@@ -97,7 +106,7 @@ function App() {
             <div className="hero-divider-line" />
           </div>
           {[
-            { n: '01', title: 'Choose an agent', desc: 'Pick from Summarizer, Planner, Quiz, Flashcards, or RAG Study below.' },
+            { n: '01', title: 'Choose a tool', desc: 'Pick from Summarizer, Planner, Quiz, Flashcards, RAG Study, or Practice Test below.' },
             { n: '02', title: 'Provide input',   desc: 'Enter your notes, topic, or exam date depending on the agent.' },
             { n: '03', title: 'Get results',     desc: 'Gemini AI processes your input and returns structured output instantly.' },
           ].map(s => (
@@ -146,6 +155,7 @@ function App() {
             {activeTab === 'quiz'       && <Quiz />}
             {activeTab === 'flashcards' && <Flashcards />}
             {activeTab === 'rag'        && <RagStudy />}
+            {activeTab === 'practice-test' && <PracticeTest />}
           </div>
         </div>
       </section>

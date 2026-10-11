@@ -1,6 +1,5 @@
 import { useState } from "react";
 import axios from "axios";
-import PdfUpload from "./PdfUpload";
 
 const API = "http://localhost:8000";
 
@@ -38,17 +37,15 @@ export default function Quiz() {
   return (
     <div>
       <div className="panel-desc">
-        Enter a topic or upload a PDF. Choose how many questions you want —
+        Enter a topic. Choose how many questions you want —
         the AI generates MCQs with instant answer reveal and score tracking.
       </div>
 
-      <PdfUpload onExtract={(t) => { setTopic(t.slice(0, 300)); setQuestions([]); }} />
-
-      <div className="inputs-row" style={{ marginTop: 16 }}>
+      <div className="inputs-row">
         <div className="field">
           <label className="field-label">Topic or Extracted Text</label>
           <input type="text"
-            placeholder="e.g. Photosynthesis, World War II, or paste PDF content..."
+            placeholder="e.g. Photosynthesis, World War II..."
             value={topic}
             onChange={e => setTopic(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleGenerate()}
