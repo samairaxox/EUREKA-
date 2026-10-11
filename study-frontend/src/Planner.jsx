@@ -6,7 +6,7 @@ const API = 'http://localhost:8000';
 // Format YYYY-MM-DD → "25 May"
 function fmtDate(dateStr) {
   if (!dateStr) return dateStr;
-  const [year, month, day] = dateStr.split('-');
+  const [, month, day] = dateStr.split('-');
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `${parseInt(day, 10)} ${months[parseInt(month, 10) - 1]}`;
 }
@@ -19,10 +19,13 @@ export default function Planner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const today = new Date().toISOString().split('T')[0];
+  // Build the local calendar date without UTC conversion (which can shift the
+  // date for users west of UTC).
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const handleSubmit = async () => {
-    if (!topic.trim() || !examDate || !startDate) return;
+    if (!topic.trim() || !examDate || !startDate || examDate < startDate) return;
     setLoading(true);
     setError('');
     setSchedule([]);
@@ -86,7 +89,7 @@ export default function Planner() {
             className="btn btn--primary btn--arrow"
             id="generate-btn"
             onClick={handleSubmit}
-            disabled={loading || !topic.trim() || !startDate || !examDate}
+            disabled={loading || !topic.trim() || !startDate || !examDate || examDate < startDate}
           >
             {loading ? <><span className="spinner" /> BUILDING</> : 'GENERATE'}
           </button>

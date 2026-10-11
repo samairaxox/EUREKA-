@@ -1,10 +1,15 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from agents import summarizer_agent, planner_agent
 from eureka_graph import app_graph
+from rag_engine import build_vectorstore, rag_query
 import fitz  # pymupdf
 import io
+import uuid
+
+# ── In-memory vectorstore store (session_id → vectorstore) ──
+_rag_store: dict = {}
 
 app = FastAPI()
 
@@ -108,3 +113,60 @@ def flashcards(req: FlashcardRequest):
     except Exception as e:
         print(f"ERROR: {e}")
         raise
+
+# ── RAG request models ───────────────────────────
+class RagQuizRequest(BaseModel):
+    session_id: str
+    num_questions: int = 5
+
+class RagSummarizeRequest(BaseModel):
+    session_id: str
+
+# ── RAG endpoints ────────────────────────────────
+@app.post("/rag/upload")
+async def rag_upload(file: UploadFile = File(...)):
+    """Upload a PDF, build a FAISS vectorstore, return a session_id."""
+    try:
+        pdf_bytes = await file.read()
+        vectorstore = build_vectorstore(pdf_bytes)
+        session_id = str(uuid.uuid4())
+        _rag_store[session_id] = vectorstore
+        return {"session_id": session_id, "filename": file.filename}
+    except Exception as e:
+        print(f"RAG UPLOAD ERROR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/rag/quiz")
+def rag_quiz(req: RagQuizRequest):
+    """Generate an MCQ quiz from a previously uploaded PDF."""
+    vectorstore = _rag_store.get(req.session_id)
+    if not vectorstore:
+        raise HTTPException(status_code=404, detail="session_id not found. Upload a PDF first via /rag/upload.")
+    try:
+        prompt = (
+            f"Generate {req.num_questions} multiple-choice questions (MCQs) from the document content. "
+            "For each question provide 4 options labelled A–D and mark the correct answer. "
+            "Format each question clearly and number them."
+        )
+        result = rag_query(vectorstore, prompt)
+        return {"session_id": req.session_id, "num_questions": req.num_questions, "quiz": result}
+    except Exception as e:
+        print(f"RAG QUIZ ERROR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/rag/summarize")
+def rag_summarize(req: RagSummarizeRequest):
+    """Generate a structured summary from a previously uploaded PDF."""
+    vectorstore = _rag_store.get(req.session_id)
+    if not vectorstore:
+        raise HTTPException(status_code=404, detail="session_id not found. Upload a PDF first via /rag/upload.")
+    try:
+        prompt = (
+            "Provide a clear, structured summary of the document. "
+            "Include: main topic, key points (as bullet points), and a brief conclusion."
+        )
+        result = rag_query(vectorstore, prompt)
+        return {"session_id": req.session_id, "summary": result}
+    except Exception as e:
+        print(f"RAG SUMMARIZE ERROR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -1,17 +1,27 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
-import json
+import json, os
 
 load_dotenv()
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.7)
+llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0.7, groq_api_key=os.getenv("GROQ_API_KEY"))
 
 def safe_parse(content: str):
+    """Parse LLM JSON output, using json_repair as a fallback for malformed responses."""
     clean = content.strip()
     if clean.startswith("```"):
         lines = clean.split("\n")
         clean = "\n".join(lines[1:-1]).strip()
-    return json.loads(clean)
+    try:
+        return json.loads(clean)
+    except json.JSONDecodeError:
+        try:
+            from json_repair import repair_json
+            repaired = repair_json(clean)
+            return json.loads(repaired)
+        except Exception as e:
+            print(f"[safe_parse] Could not repair JSON: {e}\nRaw content: {content[:500]}")
+            raise
 
 def flashcard_agent(topic: str, num_cards: int = 10) -> list:
     prompt = PromptTemplate.from_template(

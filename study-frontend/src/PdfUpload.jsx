@@ -12,8 +12,9 @@ export default function PdfUpload({ onExtract }) {
   const handleFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.type !== "application/pdf") {
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
       setError("Please upload a PDF file.");
+      e.target.value = "";
       return;
     }
     setFileName(file.name);
@@ -27,18 +28,21 @@ export default function PdfUpload({ onExtract }) {
       });
       if (res.data.error) {
         setError(res.data.error);
-      } else {
+      } else if (typeof res.data.text === "string") {
         onExtract(res.data.text);
+      } else {
+        setError("The backend returned no extracted PDF text.");
       }
     } catch {
       setError("Failed to extract PDF. Make sure the backend is running.");
     }
     setLoading(false);
+    e.target.value = "";
   };
 
   return (
     <div className="pdf-upload-box">
-      <div className="pdf-upload-inner" onClick={() => inputRef.current.click()}>
+        <div className="pdf-upload-inner" onClick={() => inputRef.current?.click()}>
         <input
           ref={inputRef}
           type="file"

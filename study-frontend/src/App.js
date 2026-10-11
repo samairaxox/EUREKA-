@@ -3,13 +3,15 @@ import Summarizer from './Summarizer';
 import Planner from './Planner';
 import Quiz from './Quiz';
 import Flashcards from './Flashcards';
+import RagStudy from './RagStudy';
 import './App.css';
 
 const TABS = [
-  { id: 'summarizer', label: 'Summarizer' },
-  { id: 'planner',    label: 'Planner'    },
-  { id: 'quiz',       label: 'Quiz'       },
-  { id: 'flashcards', label: 'Flashcards' },
+  { id: 'summarizer', label: 'Summarizer'  },
+  { id: 'planner',    label: 'Planner'     },
+  { id: 'quiz',       label: 'Quiz'        },
+  { id: 'flashcards', label: 'Flashcards'  },
+  { id: 'rag',        label: 'RAG Study'   },
 ];
 
 const AGENTS = [
@@ -37,13 +39,20 @@ const AGENTS = [
     title: 'Flashcards',
     desc: 'Enter a topic. Get 10 flip-cards with terms on the front and explanations on the back.',
   },
+  {
+    id: 'rag',
+    mono: 'RAG Engine — EUREKA',
+    title: 'PDF RAG Study',
+    desc: 'Upload any PDF. The AI indexes it with FAISS and generates quizzes or summaries directly from your document.',
+  },
 ];
 
 const PANEL_META = {
-  summarizer: { mono: 'Summarizer Agent', title: 'Distil your notes into essentials' },
-  planner:    { mono: 'Planner Agent',    title: 'Build your revision schedule'      },
-  quiz:       { mono: 'Quiz Agent',       title: 'Test your understanding'           },
-  flashcards: { mono: 'Flashcard Agent',  title: 'Review with flip-cards'            },
+  summarizer: { mono: 'Summarizer Agent', title: 'Distil your notes into essentials'      },
+  planner:    { mono: 'Planner Agent',    title: 'Build your revision schedule'            },
+  quiz:       { mono: 'Quiz Agent',       title: 'Test your understanding'                 },
+  flashcards: { mono: 'Flashcard Agent',  title: 'Review with flip-cards'                  },
+  rag:        { mono: 'RAG Engine',       title: 'Quiz & summarise your own PDF documents' },
 };
 
 function App() {
@@ -71,13 +80,13 @@ function App() {
 
       <section className="hero">
         <div className="hero-left">
-          <div className="hero-eyebrow">Four AI agents — one platform</div>
+          <div className="hero-eyebrow">Five AI agents — one platform</div>
           <h1 className="hero-title">
             Study Smarter.<br /><em>Not Harder.</em>
           </h1>
           <p className="hero-sub">
             A unified multi-agent study platform. Summarise notes, plan your revision,
-            test yourself with quizzes, and drill concepts with flashcards — all powered
+            test yourself with quizzes, drill concepts with flashcards, and study PDFs — all powered
             by Gemini AI and LangGraph.
           </p>
         </div>
@@ -88,7 +97,7 @@ function App() {
             <div className="hero-divider-line" />
           </div>
           {[
-            { n: '01', title: 'Choose an agent', desc: 'Pick from Summarizer, Planner, Quiz, or Flashcards below.' },
+            { n: '01', title: 'Choose an agent', desc: 'Pick from Summarizer, Planner, Quiz, Flashcards, or RAG Study below.' },
             { n: '02', title: 'Provide input',   desc: 'Enter your notes, topic, or exam date depending on the agent.' },
             { n: '03', title: 'Get results',     desc: 'Gemini AI processes your input and returns structured output instantly.' },
           ].map(s => (
@@ -136,12 +145,13 @@ function App() {
             {activeTab === 'planner'    && <Planner />}
             {activeTab === 'quiz'       && <Quiz />}
             {activeTab === 'flashcards' && <Flashcards />}
+            {activeTab === 'rag'        && <RagStudy />}
           </div>
         </div>
       </section>
 
       <footer className="footer">
-        <span className="footer-left">FastAPI · LangChain · LangGraph · Gemini AI · React</span>
+        <span className="footer-left">FastAPI · LangChain · LangGraph · FAISS · HuggingFace · Groq · React</span>
         <span className="footer-right">v4.0</span>
       </footer>
     </div>

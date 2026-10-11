@@ -1,22 +1,33 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
 import json
 import re
+import os
 
 load_dotenv()
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.5)
+llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0.5, groq_api_key=os.getenv("GROQ_API_KEY"))
 
 
 def safe_parse(content: str):
-    # Remove markdown code fences if present
+    """Parse LLM JSON output, using json_repair as a fallback for malformed responses."""
     clean = content.strip()
+    # Remove markdown code fences if present
     if clean.startswith("```"):
         lines = clean.split("\n")
-        # Remove first line (```json or ```) and last line (```)
         clean = "\n".join(lines[1:-1]).strip()
-    return json.loads(clean)
+    try:
+        return json.loads(clean)
+    except json.JSONDecodeError:
+        # Attempt to repair and re-parse
+        try:
+            from json_repair import repair_json
+            repaired = repair_json(clean)
+            return json.loads(repaired)
+        except Exception as e:
+            print(f"[safe_parse] Could not repair JSON: {e}\nRaw content: {content[:500]}")
+            raise
 
 def summarizer_agent(text: str) -> dict:
     prompt = PromptTemplate.from_template(
