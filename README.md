@@ -1,4 +1,4 @@
-::: {align="center"}
+
 # EUREKA
 
 ### Your AI-powered study workspace
@@ -25,9 +25,6 @@ workspace.
 
 ## At a glance
 
-  -----------------------------------------------------------------------
-                                      What EUREKA provides
-  ----------------------------------- -----------------------------------
   **Learn**                           Summaries, quizzes, flashcards,
                                       practice tests, and document Q&A
 
