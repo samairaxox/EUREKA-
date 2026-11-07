@@ -1,17 +1,28 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
-import json, re
+from llm_runtime import LLM_GATE
+import json, re, os
 
 load_dotenv()
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.7)
+llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0.7, groq_api_key=os.getenv("GROQ_API_KEY"))
 
 def safe_parse(content: str):
+    """Parse LLM JSON output, using json_repair as a fallback for malformed responses."""
     clean = content.strip()
     if clean.startswith("```"):
         lines = clean.split("\n")
         clean = "\n".join(lines[1:-1]).strip()
-    return json.loads(clean)
+    try:
+        return json.loads(clean)
+    except json.JSONDecodeError:
+        try:
+            from json_repair import repair_json
+            repaired = repair_json(clean)
+            return json.loads(repaired)
+        except Exception as e:
+            print(f"[safe_parse] Could not repair JSON: {e}\nRaw content: {content[:500]}")
+            raise
 
 def quiz_agent(topic: str, num_questions: int = 5) -> list:
     prompt = PromptTemplate.from_template(
@@ -20,12 +31,14 @@ def quiz_agent(topic: str, num_questions: int = 5) -> list:
         "Each object must have exactly these keys:\n"
         "  question: the question string\n"
         "  options: array of exactly 4 answer strings\n"
-        "  answer: the correct answer string (must match one of the options exactly)\n\n"
+        "  answer: the correct answer string (must match one of the options exactly)\n"
+        "  explanation: a concise explanation of why the answer is correct\n\n"
         "Rules:\n"
         "- No extra text before or after the JSON\n"
         "- No markdown formatting\n"
         "- Just raw JSON array, nothing else"
     )
     chain = prompt | llm
-    result = chain.invoke({"topic": topic, "num_questions": num_questions})
+    with LLM_GATE:
+        result = chain.invoke({"topic": topic, "num_questions": num_questions})
     return safe_parse(result.content)

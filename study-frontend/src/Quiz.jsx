@@ -1,8 +1,7 @@
-import { useState } from "react";
-import axios from "axios";
-import PdfUpload from "./PdfUpload";
-
-const API = "http://localhost:8000";
+import { useEffect, useRef, useState } from "react";
+import AiThinking from "./components/AiThinking";
+import { api } from './api/client';
+import { profileApi } from './api/auth';
 
 export default function Quiz() {
   const [topic, setTopic] = useState("");
@@ -21,7 +20,7 @@ export default function Quiz() {
     setSelected({});
     setRevealed({});
     try {
-      const res = await axios.post(`${API}/quiz`, { topic, num_questions: numQ });
+      const res = await api.post(`/quiz`, { topic, num_questions: numQ });
       setQuestions(res.data.questions);
     } catch {
       setError("Could not reach the backend. Make sure uvicorn is running on port 8000.");
@@ -35,20 +34,26 @@ export default function Quiz() {
   const score = questions.filter((q, i) => revealed[i] && selected[i] === q.answer).length;
   const attempted = Object.keys(revealed).length;
 
+  // Record the result once per generated quiz, when every question has been answered.
+  const recordedFor = useRef(null);
+  useEffect(() => {
+    if (!questions.length || attempted !== questions.length || recordedFor.current === questions) return;
+    recordedFor.current = questions;
+    profileApi.recordQuizResult({ topic: topic.trim().slice(0, 200) || 'Quiz', score, total: questions.length }).catch(() => {});
+  }, [questions, attempted, score, topic]);
+
   return (
     <div>
       <div className="panel-desc">
-        Enter a topic or upload a PDF. Choose how many questions you want —
+        Enter a topic. Choose how many questions you want —
         the AI generates MCQs with instant answer reveal and score tracking.
       </div>
 
-      <PdfUpload onExtract={(t) => { setTopic(t.slice(0, 300)); setQuestions([]); }} />
-
-      <div className="inputs-row" style={{ marginTop: 16 }}>
+      <div className="inputs-row">
         <div className="field">
           <label className="field-label">Topic or Extracted Text</label>
           <input type="text"
-            placeholder="e.g. Photosynthesis, World War II, or paste PDF content..."
+            placeholder="e.g. Photosynthesis, World War II..."
             value={topic}
             onChange={e => setTopic(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleGenerate()}
@@ -68,6 +73,7 @@ export default function Quiz() {
       <button className="submit-btn" onClick={handleGenerate} disabled={loading || !topic.trim()}>
         {loading ? <><span className="spin" /> Generating {numQ} questions...</> : <>Generate {numQ} Questions</>}
       </button>
+      <AiThinking active={loading} label="Writing your questions…" />
 
       {questions.length > 0 && (
         <div className="result-box">

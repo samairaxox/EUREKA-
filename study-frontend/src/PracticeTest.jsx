@@ -1,0 +1,252 @@
+import { useEffect, useRef, useState } from "react";
+import AiThinking from "./components/AiThinking";
+import { api } from './api/client';
+import { profileApi } from './api/auth';
+
+function formatTime(seconds) {
+  const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const remainingSeconds = (seconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${remainingSeconds}`;
+}
+
+export default function PracticeTest() {
+  const [topic, setTopic] = useState("");
+  const [numQuestions, setNumQuestions] = useState("10");
+  const [timeLimit, setTimeLimit] = useState("15");
+  const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState({});
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [view, setView] = useState("setup");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (view !== "taking") return undefined;
+    if (timeRemaining <= 0) {
+      setView("results");
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setTimeRemaining(value => Math.max(0, value - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [view, timeRemaining]);
+
+  const startTest = async () => {
+    if (!topic.trim()) return;
+    const questionCount = Number(numQuestions);
+    const timeLimitMinutes = Number(timeLimit);
+    if (!Number.isInteger(questionCount) || questionCount < 1) {
+      setError("Enter a whole number of questions greater than 0.");
+      return;
+    }
+    if (!Number.isInteger(timeLimitMinutes) || timeLimitMinutes < 1 || timeLimitMinutes > 180) {
+      setError("Enter a whole-number time limit between 1 and 180 minutes.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const response = await api.post(`/quiz`, {
+        topic: topic.trim(),
+        num_questions: questionCount,
+      });
+      if (!Array.isArray(response.data?.questions) || response.data.questions.length === 0) {
+        throw new Error("The backend returned no questions. Try another topic.");
+      }
+      setQuestions(response.data.questions);
+      setAnswers({});
+      setCurrentIndex(0);
+      setTimeRemaining(timeLimitMinutes * 60);
+      setView("taking");
+    } catch (requestError) {
+      setError(requestError.message === "The backend returned no questions. Try another topic."
+        ? requestError.message
+        : "Could not reach the backend. Make sure uvicorn is running on port 8000.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitTest = () => setView("results");
+  const currentQuestion = questions[currentIndex];
+  const score = questions.reduce((total, question, index) => (
+    total + (answers[index] === question.answer ? 1 : 0)
+  ), 0);
+
+  const recordedFor = useRef(null);
+  useEffect(() => {
+    if (view !== "results" || !questions.length || recordedFor.current === questions) return;
+    recordedFor.current = questions;
+    profileApi.recordQuizResult({ topic: String(topic || "Practice test").trim().slice(0, 200) || "Practice test", score, total: questions.length }).catch(() => {});
+  }, [view, questions, score, topic]);
+
+  if (view === "taking" && currentQuestion) {
+    return (
+      <section className="practice-test" aria-label="Practice test">
+        <header className="practice-test-header">
+          <div className="practice-test-topic">{topic}</div>
+          <div className="practice-test-progress">{currentIndex + 1} / {questions.length}</div>
+          <div className={`practice-test-timer${timeRemaining < 60 ? " urgent" : ""}`} role="timer" aria-live="off">
+            <span aria-hidden="true">◷</span> {formatTime(timeRemaining)}
+          </div>
+        </header>
+
+        <div className="practice-test-content">
+          <div className="practice-question-card">
+            <div className="practice-question-label">Question {currentIndex + 1}</div>
+            <h2>{currentQuestion.question}</h2>
+            <div className="quiz-options practice-options">
+              {(currentQuestion.options || []).map((option, index) => (
+                <button
+                  type="button"
+                  key={`${currentIndex}-${index}`}
+                  className={`quiz-option${answers[currentIndex] === option ? " chosen" : ""}`}
+                  onClick={() => setAnswers(current => ({ ...current, [currentIndex]: option }))}
+                >
+                  <span className="opt-letter">{String.fromCharCode(65 + index)}</span>
+                  <span>{option}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <footer className="practice-test-controls">
+          <button
+            type="button"
+            className="fc-nav-btn"
+            onClick={() => setCurrentIndex(index => index - 1)}
+            disabled={currentIndex === 0}
+          >
+            ← Previous
+          </button>
+          {currentIndex < questions.length - 1 ? (
+            <button
+              type="button"
+              className="fc-nav-btn practice-next"
+              onClick={() => setCurrentIndex(index => index + 1)}
+            >
+              Next →
+            </button>
+          ) : (
+            <button type="button" className="submit-btn practice-submit" onClick={submitTest}>
+              Submit Test
+            </button>
+          )}
+        </footer>
+        <button type="button" className="practice-finish-btn" onClick={submitTest}>
+          Finish test now
+        </button>
+      </section>
+    );
+  }
+
+  if (view === "results") {
+    return (
+      <section className="practice-results" aria-label="Practice test results">
+        <div className="practice-results-summary">
+          <div className="practice-results-eyebrow">Test complete · {topic}</div>
+          <h2>{score} <span>/ {questions.length}</span></h2>
+          <p>Correct answers</p>
+          {timeRemaining === 0 && <div className="practice-timeout-note">Time is up. Your test was submitted automatically.</div>}
+          <button
+            type="button"
+            className="fc-restart-btn"
+            onClick={() => { setView("setup"); setError(""); }}
+          >
+            Start a New Test
+          </button>
+        </div>
+
+        <div className="practice-review-list">
+          {questions.map((question, questionIndex) => (
+            <article className="practice-review-card" key={questionIndex}>
+              <div className="practice-review-heading">
+                <span className="quiz-num">Q{questionIndex + 1}</span>
+                <h3>{question.question}</h3>
+                <span className={`practice-mark${answers[questionIndex] === question.answer ? " is-correct" : " is-wrong"}`}>
+                  {answers[questionIndex] === question.answer ? "Correct" : "Incorrect"}
+                </span>
+              </div>
+              <div className="quiz-options practice-review-options">
+                {(question.options || []).map((option, optionIndex) => {
+                  const isCorrect = option === question.answer;
+                  const isWrongSelection = answers[questionIndex] === option && !isCorrect;
+                  const className = isCorrect ? "correct" : isWrongSelection ? "wrong" : "dim";
+                  return (
+                    <div className={`quiz-option ${className}`} key={`${questionIndex}-${optionIndex}`}>
+                      <span className="opt-letter">{String.fromCharCode(65 + optionIndex)}</span>
+                      <span>{option}</span>
+                      {isCorrect && <span className="practice-answer-tag">Correct answer</span>}
+                      {isWrongSelection && <span className="practice-answer-tag">Your answer</span>}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="practice-explanation">
+                <strong>Why:</strong> {question.explanation || "No explanation was provided for this question."}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="practice-setup">
+      <div className="panel-desc">
+        Build a timed test on any topic. Work through one question at a time and review explanations after submitting.
+      </div>
+
+      <div className="field">
+        <label className="field-label" htmlFor="practice-topic">Topic</label>
+        <input
+          id="practice-topic"
+          type="text"
+          value={topic}
+          placeholder="e.g. Cell Biology, Thermodynamics..."
+          onChange={event => setTopic(event.target.value)}
+          onKeyDown={event => event.key === "Enter" && startTest()}
+        />
+      </div>
+
+      <div className="practice-setup-row">
+        <div className="field">
+          <label className="field-label" htmlFor="practice-question-count">Number of Questions</label>
+          <input
+            id="practice-question-count"
+            type="number"
+            min="1"
+            step="1"
+            value={numQuestions}
+            onChange={event => setNumQuestions(event.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label className="field-label" htmlFor="practice-time-limit">Time Limit (minutes)</label>
+          <input
+            id="practice-time-limit"
+            type="number"
+            min="1"
+            max="180"
+            step="1"
+            value={timeLimit}
+            onChange={event => setTimeLimit(event.target.value)}
+          />
+        </div>
+      </div>
+
+      {error && <p className="error-msg" role="alert">{error}</p>}
+      <button
+        type="button"
+        className="submit-btn"
+        onClick={startTest}
+        disabled={loading || !topic.trim() || !Number.isInteger(Number(numQuestions)) || Number(numQuestions) < 1 || !Number.isInteger(Number(timeLimit)) || Number(timeLimit) < 1 || Number(timeLimit) > 180}
+      >
+        {loading ? <><span className="spin" /> Preparing test...</> : `Start ${Number(numQuestions) || ""}-Question Test`}
+      </button>
+      <AiThinking active={loading} label="Preparing your practice test…" />
+    </section>
+  );
+}

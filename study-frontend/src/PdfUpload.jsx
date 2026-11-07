@@ -1,9 +1,7 @@
 import { useState, useRef } from "react";
-import axios from "axios";
+import { api, errorMessage } from './api/client';
 
-const API = "http://localhost:8000";
-
-export default function PdfUpload({ onExtract }) {
+export default function PdfUpload({ onExtract, onFile }) {
   const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
@@ -12,33 +10,41 @@ export default function PdfUpload({ onExtract }) {
   const handleFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.type !== "application/pdf") {
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
       setError("Please upload a PDF file.");
+      e.target.value = "";
       return;
     }
     setFileName(file.name);
     setError("");
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await axios.post(`${API}/extract-pdf`, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
-      if (res.data.error) {
-        setError(res.data.error);
+      if (onFile) {
+        await onFile(file);
       } else {
-        onExtract(res.data.text);
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await api.post(`/extract-pdf`, formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+        if (res.data.error) {
+          setError(res.data.error);
+        } else if (typeof res.data.text === "string") {
+          onExtract?.(res.data.text);
+        } else {
+          setError("The backend returned no extracted PDF text.");
+        }
       }
-    } catch {
-      setError("Failed to extract PDF. Make sure the backend is running.");
+    } catch (err) {
+      setError(errorMessage(err, "The PDF could not be read. Please try again."));
     }
     setLoading(false);
+    e.target.value = "";
   };
 
   return (
     <div className="pdf-upload-box">
-      <div className="pdf-upload-inner" onClick={() => inputRef.current.click()}>
+        <div className="pdf-upload-inner" onClick={() => inputRef.current?.click()}>
         <input
           ref={inputRef}
           type="file"
