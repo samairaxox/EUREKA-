@@ -1,11 +1,9 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { markTodayAsStudied } from './streak';
-
-const API = "http://localhost:8000";
+import { useEffect, useRef, useState } from "react";
+import AiThinking from "./components/AiThinking";
+import { api } from './api/client';
+import { profileApi } from './api/auth';
 
 export default function Quiz() {
-  useEffect(() => { markTodayAsStudied(); }, []);
   const [topic, setTopic] = useState("");
   const [numQ, setNumQ] = useState(5);
   const [questions, setQuestions] = useState([]);
@@ -22,7 +20,7 @@ export default function Quiz() {
     setSelected({});
     setRevealed({});
     try {
-      const res = await axios.post(`${API}/quiz`, { topic, num_questions: numQ });
+      const res = await api.post(`/quiz`, { topic, num_questions: numQ });
       setQuestions(res.data.questions);
     } catch {
       setError("Could not reach the backend. Make sure uvicorn is running on port 8000.");
@@ -35,6 +33,14 @@ export default function Quiz() {
 
   const score = questions.filter((q, i) => revealed[i] && selected[i] === q.answer).length;
   const attempted = Object.keys(revealed).length;
+
+  // Record the result once per generated quiz, when every question has been answered.
+  const recordedFor = useRef(null);
+  useEffect(() => {
+    if (!questions.length || attempted !== questions.length || recordedFor.current === questions) return;
+    recordedFor.current = questions;
+    profileApi.recordQuizResult({ topic: topic.trim().slice(0, 200) || 'Quiz', score, total: questions.length }).catch(() => {});
+  }, [questions, attempted, score, topic]);
 
   return (
     <div>
@@ -67,6 +73,7 @@ export default function Quiz() {
       <button className="submit-btn" onClick={handleGenerate} disabled={loading || !topic.trim()}>
         {loading ? <><span className="spin" /> Generating {numQ} questions...</> : <>Generate {numQ} Questions</>}
       </button>
+      <AiThinking active={loading} label="Writing your questions…" />
 
       {questions.length > 0 && (
         <div className="result-box">

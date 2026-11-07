@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getStreakStats, markTodayAsStudied, toLocalDateString } from './streak';
+import { profileApi } from './api/auth';
+import { useProgress } from './progress/ProgressContext';
 
 const QUESTION_SECONDS = 10;
 const DAILY_QUESTION_COUNT = 5;
@@ -106,10 +108,9 @@ export default function TriviaBlast() {
   const [selectedOption, setSelectedOption] = useState(null);
   const [feedback, setFeedback] = useState('');
   const [todayScore, setTodayScore] = useState(initialStatus.todayScore);
+  const { refresh } = useProgress();
   const [currentStreak, setCurrentStreak] = useState(() => getStreakStats().currentStreak);
   const [totalDaysPlayed, setTotalDaysPlayed] = useState(initialStatus.totalDaysPlayed);
-
-  useEffect(() => { markTodayAsStudied(); }, []);
 
   const finishDailyRun = useCallback(finalScore => {
     const previous = readDailyRecord();
@@ -124,13 +125,18 @@ export default function TriviaBlast() {
     } catch {
       // Keep the results visible even if browser storage is unavailable.
     }
+    // Keep Samaira's local activity-streak history for this daily challenge, while the account
+    // progress tracker remains server-backed and records the quiz result below.
     markTodayAsStudied();
-    setTodayScore(finalScore);
-    setTotalDaysPlayed(total);
     setCurrentStreak(getStreakStats().currentStreak);
+    setTodayScore(finalScore);
+    profileApi.recordQuizResult({ topic: 'Daily Trivia', score: finalScore, total: DAILY_QUESTION_COUNT })
+      .then(() => refresh())
+      .catch(() => {});
+    setTotalDaysPlayed(total);
     setPhase('results');
     window.dispatchEvent(new CustomEvent(DAILY_TRIVIA_EVENT));
-  }, []);
+  }, [refresh]);
 
   useEffect(() => {
     if (phase !== 'playing') return undefined;

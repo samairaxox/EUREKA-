@@ -1,3 +1,5 @@
+// Retained for Samaira's browser-side activity/trivia streak display. The account progress and
+// 365-day study tracker use the authenticated server API; this local history never overwrites it.
 const STORAGE_KEY = 'studyDates';
 export const STUDY_DATES_EVENT = 'eureka:study-dates-updated';
 

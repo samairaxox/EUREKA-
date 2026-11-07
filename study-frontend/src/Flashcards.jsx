@@ -1,11 +1,8 @@
+import AiThinking from "./components/AiThinking";
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { markTodayAsStudied } from './streak';
-
-const API = "http://localhost:8000";
+import { api } from './api/client';
 
 export default function Flashcards() {
-  useEffect(() => { markTodayAsStudied(); }, []);
   const [mode, setMode] = useState("ai");
   const [topic, setTopic] = useState("");
   const [numCards, setNumCards] = useState(10);
@@ -34,7 +31,7 @@ export default function Flashcards() {
     setCurrentIndex(0);
     setFlipped(false);
     try {
-      const res = await axios.post(`${API}/flashcards`, { topic, num_cards: numCards });
+      const res = await api.post(`/flashcards`, { topic, num_cards: numCards });
       if (!Array.isArray(res.data?.cards)) {
         throw new Error("The backend returned an invalid flashcard response.");
       }
@@ -113,10 +110,7 @@ export default function Flashcards() {
 
         <div className="fc-study-stage">
           {loading ? (
-            <div className="fc-loading" role="status">
-              <span className="spin" />
-              <span>Generating {numCards} flashcards...</span>
-            </div>
+            <AiThinking active label={`Writing ${numCards} flashcards…`} />
           ) : currentCard ? (
             <button
               type="button"

@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { markTodayAsStudied } from './streak';
-
-const API = "http://localhost:8000";
+import { useEffect, useRef, useState } from "react";
+import AiThinking from "./components/AiThinking";
+import { api } from './api/client';
+import { profileApi } from './api/auth';
 
 function formatTime(seconds) {
   const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -11,7 +10,6 @@ function formatTime(seconds) {
 }
 
 export default function PracticeTest() {
-  useEffect(() => { markTodayAsStudied(); }, []);
   const [topic, setTopic] = useState("");
   const [numQuestions, setNumQuestions] = useState("10");
   const [timeLimit, setTimeLimit] = useState("15");
@@ -48,7 +46,7 @@ export default function PracticeTest() {
     setLoading(true);
     setError("");
     try {
-      const response = await axios.post(`${API}/quiz`, {
+      const response = await api.post(`/quiz`, {
         topic: topic.trim(),
         num_questions: questionCount,
       });
@@ -74,6 +72,13 @@ export default function PracticeTest() {
   const score = questions.reduce((total, question, index) => (
     total + (answers[index] === question.answer ? 1 : 0)
   ), 0);
+
+  const recordedFor = useRef(null);
+  useEffect(() => {
+    if (view !== "results" || !questions.length || recordedFor.current === questions) return;
+    recordedFor.current = questions;
+    profileApi.recordQuizResult({ topic: String(topic || "Practice test").trim().slice(0, 200) || "Practice test", score, total: questions.length }).catch(() => {});
+  }, [view, questions, score, topic]);
 
   if (view === "taking" && currentQuestion) {
     return (
@@ -241,6 +246,7 @@ export default function PracticeTest() {
       >
         {loading ? <><span className="spin" /> Preparing test...</> : `Start ${Number(numQuestions) || ""}-Question Test`}
       </button>
+      <AiThinking active={loading} label="Preparing your practice test…" />
     </section>
   );
 }

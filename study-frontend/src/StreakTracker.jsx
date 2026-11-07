@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { getStreakStats, getStudyDates, STUDY_DATES_EVENT, toLocalDateString } from './streak';
+import { useMemo } from 'react';
+import { useProgress } from './progress/ProgressContext';
+import { toLocalDateString } from './streak';
 
 const BADGES = [
   { days: 1, icon: '✨', name: 'Spark', tone: 'spark' },
@@ -9,8 +10,18 @@ const BADGES = [
   { days: 100, icon: '🐐', name: 'GOAT', tone: 'goat' },
 ];
 
-function makeYearGrid() {
-  const today = new Date();
+function parseDate(value) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day, 12);
+}
+
+function dateLabel(value) {
+  return parseDate(value).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+/** A 365-day activity grid. Only real recorded study days are shaded. */
+export function makeYearGrid(todayString) {
+  const today = todayString ? parseDate(todayString) : new Date();
   today.setHours(12, 0, 0, 0);
   const firstDay = new Date(today);
   firstDay.setDate(today.getDate() - 364);
@@ -22,27 +33,29 @@ function makeYearGrid() {
   })];
 }
 
-function dateLabel(date) {
-  return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-  });
-}
-
 export default function StreakTracker() {
-  const [studyDates, setStudyDates] = useState(() => getStudyDates());
-  const gridDates = useMemo(() => makeYearGrid(), []);
-  const studyDateSet = useMemo(() => new Set(studyDates), [studyDates]);
-  const { currentStreak, longestStreak } = getStreakStats(studyDates);
+  const { progress, error, loading, refresh } = useProgress();
+  const todayString = progress?.today?.date || toLocalDateString();
+  const gridDates = useMemo(() => makeYearGrid(todayString), [todayString]);
+  const studyDateSet = useMemo(() => new Set(progress?.study_dates || []), [progress]);
 
-  useEffect(() => {
-    const refresh = event => setStudyDates(event?.detail?.studyDates || getStudyDates());
-    window.addEventListener(STUDY_DATES_EVENT, refresh);
-    window.addEventListener('storage', refresh);
-    return () => {
-      window.removeEventListener(STUDY_DATES_EVENT, refresh);
-      window.removeEventListener('storage', refresh);
-    };
-  }, []);
+  if (!progress) {
+    return (
+      <section className="streak-tracker" aria-label="Study streak tracker">
+        {error ? (
+          <div className="progress-error" role="alert">
+            <p>{error}</p>
+            <button type="button" className="submit-btn" onClick={refresh}>Try again</button>
+          </div>
+        ) : (
+          <p className="progress-loading" role="status">{loading ? 'Loading your progress…' : 'Preparing your progress…'}</p>
+        )}
+      </section>
+    );
+  }
+
+  const currentStreak = progress.streak.current;
+  const longestStreak = progress.streak.longest;
 
   return (
     <section className="streak-tracker" aria-label="Study streak tracker">
