@@ -53,6 +53,7 @@ body, button, input, textarea, select { font-family: 'Nunito', sans-serif; }
 .schedule__td { border-top: 1px solid #F0ECF5; color: #625C73; font-size: .83rem; }
 .schedule tbody tr:nth-child(even) { background: #F8F5FD; }
 .schedule__td-day, .schedule__td-date { white-space: nowrap; font-weight: 800; }
+.schedule__topics { margin-top: 5px; color: #8F88A0; font-size: .72rem; line-height: 1.4; }
 .duration-badge { display: inline-block; padding: 4px 9px; border-radius: 999px; background: #EAF8F0; color: #4C8E68; font-size: .7rem; font-weight: 900; white-space: nowrap; }
 @media (max-width: 540px) {
   .panel__body { padding: 16px; }

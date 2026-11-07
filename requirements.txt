@@ -1,0 +1,29 @@
+# Core API
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+pydantic>=2.6
+python-dotenv>=1.0
+
+# Persistence
+sqlalchemy>=2.0
+alembic>=1.13
+psycopg[binary]>=3.1
+
+# Authentication
+argon2-cffi>=23.1
+pyjwt>=2.8
+google-auth>=2.29
+requests>=2.31
+
+# Study tools (existing AI workflow)
+pymupdf>=1.24
+json-repair>=0.25
+langgraph>=0.1
+langchain-core>=0.2
+langchain-groq>=0.1
+langchain-community>=0.2
+langchain-text-splitters>=0.2
+langchain-huggingface>=0.0.3
+faiss-cpu>=1.8
+sentence-transformers>=2.7

@@ -1,13 +1,11 @@
+import GameLoadingGrid from "./components/GameLoadingGrid";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from './api/client';
 import "./AnswerRush.css";
-import { markTodayAsStudied } from './streak';
 
-const API = "http://localhost:8000";
 const FEEDBACK_TIME = 420;
 
 export default function AnswerRush() {
-  useEffect(() => { markTodayAsStudied(); }, []);
   const [topic, setTopic] = useState("");
   const [questions, setQuestions] = useState([]);
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -26,7 +24,7 @@ export default function AnswerRush() {
     setLoading(true);
     setError("");
     try {
-      const response = await axios.post(`${API}/quiz`, {
+      const response = await api.post(`/quiz`, {
         topic: topic.trim(),
         num_questions: 10,
       });
@@ -119,6 +117,7 @@ export default function AnswerRush() {
           />
         </div>
         {error && <p className="error-msg" role="alert">{error}</p>}
+        <GameLoadingGrid active={loading} label="Getting your questions…" />
         <button className="submit-btn answer-rush-start" type="button" onClick={startGame} disabled={loading || !topic.trim()}>
           {loading ? <><span className="spin" /> Getting questions...</> : <>Start Game <span aria-hidden="true">→</span></>}
         </button>

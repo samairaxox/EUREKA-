@@ -1,26 +1,18 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useState } from 'react';
+import AiThinking from "./components/AiThinking";
+import { api, LONG_AI_TIMEOUT_MS } from './api/client';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import PdfUpload from './PdfUpload';
+import { formatScheduleDate, normalizeScheduleResponse } from './scheduleUtils';
 import './Studymind.css';
-import { markTodayAsStudied } from './streak';
-const API = 'http://localhost:8000';
-
-// Format YYYY-MM-DD → "25 May"
-function fmtDate(dateStr) {
-  if (!dateStr) return dateStr;
-  const [, month, day] = dateStr.split('-');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${parseInt(day, 10)} ${months[parseInt(month, 10) - 1]}`;
-}
 
 export default function Planner() {
-  useEffect(() => { markTodayAsStudied(); }, []);
   const [topic, setTopic] = useState('');
   const [startDate, setStartDate] = useState('');
   const [examDate, setExamDate] = useState('');
   const [schedule, setSchedule] = useState([]);
+  const [pdfSessionId, setPdfSessionId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -30,19 +22,25 @@ export default function Planner() {
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const handleSubmit = async () => {
-    if (!topic.trim() || !examDate || !startDate || examDate < startDate) return;
+    if ((!topic.trim() && !pdfSessionId) || !examDate || !startDate || examDate < startDate) return;
     setLoading(true);
     setError('');
     setSchedule([]);
     try {
-      const res = await axios.post(`${API}/plan`, {
-        topic,
-        exam_date: examDate,
-        start_date: startDate,
-      });
-      setSchedule(res.data.schedule);
+      const res = pdfSessionId
+        ? await api.post('/rag/plan', {
+          session_id: pdfSessionId,
+          exam_date: examDate,
+          start_date: startDate,
+        }, { timeout: LONG_AI_TIMEOUT_MS })
+        : await api.post('/plan', {
+          topic,
+          exam_date: examDate,
+          start_date: startDate,
+        }, { timeout: LONG_AI_TIMEOUT_MS });
+      setSchedule(normalizeScheduleResponse(res.data));
     } catch (err) {
-      setError('Could not reach the backend. Make sure uvicorn is running on port 8000.');
+      setError(err.response?.data?.detail || err.message || 'Could not generate the schedule. Please try again.');
     }
     setLoading(false);
   };
@@ -73,7 +71,7 @@ export default function Planner() {
       head: [['Day', 'Date', 'Task', 'Duration']],
       body: schedule.map(row => [
         row.day ?? '',
-        fmtDate(row.date) ?? '',
+        formatScheduleDate(row.date),
         row.task ?? '',
         row.duration ?? '',
       ]),
@@ -113,10 +111,19 @@ export default function Planner() {
       </div>
       <div className="panel__body">
 
-        <PdfUpload onExtract={(text) => {
-          setTopic(text);
+        <PdfUpload onFile={async file => {
           setSchedule([]);
           setError('');
+          setTopic('');
+          setPdfSessionId('');
+          const formData = new FormData();
+          formData.append('file', file);
+          const response = await api.post('/rag/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: LONG_AI_TIMEOUT_MS,
+          });
+          if (!response.data?.session_id) throw new Error('The PDF index could not be created. Please upload it again.');
+          setPdfSessionId(response.data.session_id);
         }} />
 
         {/* Form row */}
@@ -129,7 +136,7 @@ export default function Planner() {
               type="text"
               placeholder="e.g. Thermodynamics"
               value={topic}
-              onChange={e => setTopic(e.target.value)}
+              onChange={e => { setTopic(e.target.value); setPdfSessionId(''); }}
             />
           </div>
           <div className="field">
@@ -158,10 +165,11 @@ export default function Planner() {
             className="btn btn--primary btn--arrow"
             id="generate-btn"
             onClick={handleSubmit}
-            disabled={loading || !topic.trim() || !startDate || !examDate || examDate < startDate}
+            disabled={loading || (!topic.trim() && !pdfSessionId) || !startDate || !examDate || examDate < startDate}
           >
             {loading ? <><span className="spinner" /> BUILDING</> : 'GENERATE'}
           </button>
+      <AiThinking active={loading} label="Building your study plan…" />
         </div>
 
         {error && (
@@ -199,10 +207,15 @@ export default function Planner() {
                   className={`schedule__row ${i === 0 ? 'schedule__row--active' : ''} ${i === schedule.length - 1 ? 'schedule__row--dim' : ''}`}
                 >
                   <td className="schedule__td schedule__td-day">{row.day}</td>
-                  <td className="schedule__td schedule__td-date">{fmtDate(row.date)}</td>
-                  <td className="schedule__td schedule__td-task">{row.task}</td>
+                  <td className="schedule__td schedule__td-date">{row.displayDate || formatScheduleDate(row.date)}</td>
+                  <td className="schedule__td schedule__td-task">
+                    {row.task || 'Task unavailable'}
+                    {row.topics?.length > 0 && (
+                      <div className="schedule__topics">Topics: {row.topics.join(', ')}</div>
+                    )}
+                  </td>
                   <td className="schedule__td schedule__td-duration">
-                    {row.duration && <span className="duration-badge">{row.duration}</span>}
+                    <span className="duration-badge">{row.duration || 'Duration unavailable'}</span>
                   </td>
                 </tr>
               ))}

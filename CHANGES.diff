@@ -1,0 +1,90 @@
+--- /home/claude/upload/main.py	2026-10-17 09:34:16.000000000 +0000
++++ main.py	2026-10-19 13:15:11.372378181 +0000
+@@ -34,7 +34,7 @@
+     CORSMiddleware,
+     allow_origins=settings.cors_origins,
+     allow_credentials=True,
+-    allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS"],
++    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+     allow_headers=["Authorization", "Content-Type", "X-Requested-With", "X-Local-Date"],
+ )
+ 
+--- /home/claude/upload/config.py	2026-10-19 12:57:56.000000000 +0000
++++ config.py	2026-10-19 13:15:11.372419252 +0000
+@@ -26,6 +26,8 @@
+         os.getenv("CORS_ORIGINS", "http://localhost:3000")))
+     google_client_id: str = field(default_factory=lambda: os.getenv("GOOGLE_CLIENT_ID", ""))
+     rate_limit_auth_per_minute: int = field(default_factory=lambda: int(os.getenv("RATE_LIMIT_AUTH_PER_MINUTE", "10")))
++    # Session restore runs on every page load and carries no password, so it gets its own, higher limit.
++    rate_limit_refresh_per_minute: int = field(default_factory=lambda: int(os.getenv("RATE_LIMIT_REFRESH_PER_MINUTE", "120")))
+     rate_limit_ai_per_minute: int = field(default_factory=lambda: int(os.getenv("RATE_LIMIT_AI_PER_MINUTE", "30")))
+ 
+ 
+--- /home/claude/upload/auth_routes.py	2026-10-17 08:45:04.000000000 +0000
++++ auth_routes.py	2026-10-19 13:15:11.372441639 +0000
+@@ -201,7 +201,7 @@
+     db: Session = Depends(get_db),
+ ):
+     _require_csrf_header(csrf)
+-    enforce(request, "auth", settings.rate_limit_auth_per_minute)
++    enforce(request, "refresh", settings.rate_limit_refresh_per_minute)
+     presented = request.cookies.get(settings.refresh_cookie_name)
+     if not presented:
+         raise HTTPException(status_code=401, detail="Your session has ended. Please sign in again.")
+--- /home/claude/upload/conftest.py	2026-10-17 08:45:04.000000000 +0000
++++ tests/conftest.py	2026-10-19 13:15:11.374241548 +0000
+@@ -12,6 +12,8 @@
+     "postgresql+psycopg://eureka:eureka_dev_password@localhost:5432/eureka_test",
+ )
+ os.environ["DATABASE_URL"] = os.environ["EUREKA_TEST_DATABASE_URL"]
++# Tests build the schema from the models. Startup migrations would try to create the same tables again.
++os.environ["AUTO_MIGRATE"] = "false"
+ os.environ["JWT_SECRET"] = "test_secret_value_that_is_long_enough_for_hs256_0123456789"
+ os.environ["CORS_ORIGINS"] = "http://localhost:3000"
+ os.environ["RATE_LIMIT_AUTH_PER_MINUTE"] = "10000"
+--- /home/claude/upload/test_auth_api.py	2026-10-17 08:45:04.000000000 +0000
++++ tests/test_auth_api.py	2026-10-19 13:15:11.374349583 +0000
+@@ -126,3 +126,15 @@
+ def test_google_rejects_unverified_google_email(client, monkeypatch):
+     _fake_google(monkeypatch, {"sub": "g-9", "email": "maybe@example.com", "email_verified": False})
+     assert client.post("/auth/google", json={"credential": FAKE_ID_TOKEN}).status_code == 401
++
++
++# Regression: every page load restores the session. The strict login limit (10/min) logged users out after a few reloads.
++def test_session_restore_survives_normal_reloading(client, monkeypatch):
++    import auth_routes
++    from config import Settings
++    # Use the production login limit (10/min) so the test would fail if restores shared it.
++    monkeypatch.setattr(auth_routes, "settings", Settings(rate_limit_auth_per_minute=10))
++    register(client)
++    for _ in range(15):
++        resp = client.post("/auth/refresh", headers=CSRF)
++        assert resp.status_code == 200, resp.text
+--- /home/claude/upload/test_workspace_api.py	2026-10-17 08:45:04.000000000 +0000
++++ tests/test_workspace_api.py	2026-10-19 13:15:11.374638764 +0000
+@@ -88,3 +88,25 @@
+     bob_payload = register(client, email="bob-own@example.com")
+     client.post("/notes", headers=alice, json={"title": "Mine", "user_id": bob_payload["user"]["id"]})
+     assert client.get("/notes", headers=auth_header(bob_payload)).json()["notes"] == []
++
++
++# Regression: the browser's preflight for DELETE was refused because DELETE was missing from the CORS allow-list.
++def test_cors_preflight_allows_checklist_delete_from_the_frontend_origin(client):
++    resp = client.options("/checklists/1", headers={
++        "Origin": "http://localhost:3000",
++        "Access-Control-Request-Method": "DELETE",
++        "Access-Control-Request-Headers": "authorization,x-local-date,x-requested-with,content-type",
++    })
++    assert resp.status_code == 200
++    assert "DELETE" in resp.headers["access-control-allow-methods"]
++    assert resp.headers["access-control-allow-origin"] == "http://localhost:3000"
++    assert resp.headers["access-control-allow-credentials"] == "true"
++
++
++def test_cors_still_refuses_an_unlisted_origin(client):
++    resp = client.options("/checklists/1", headers={
++        "Origin": "http://evil.example",
++        "Access-Control-Request-Method": "DELETE",
++    })
++    assert resp.status_code == 400
++    assert "access-control-allow-origin" not in resp.headers

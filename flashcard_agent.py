@@ -1,6 +1,7 @@
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
+from llm_runtime import LLM_GATE
 import json, os
 
 load_dotenv()
@@ -36,5 +37,6 @@ def flashcard_agent(topic: str, num_cards: int = 10) -> list:
         "- Just raw JSON array, nothing else"
     )
     chain = prompt | llm
-    result = chain.invoke({"topic": topic, "num_cards": num_cards})
+    with LLM_GATE:
+        result = chain.invoke({"topic": topic, "num_cards": num_cards})
     return safe_parse(result.content)

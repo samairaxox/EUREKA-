@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import axios from "axios";
-import { markTodayAsStudied } from './streak';
+import AiThinking from "./components/AiThinking";
+import { useRef, useState } from "react";
+import { api, LONG_AI_TIMEOUT_MS } from './api/client';
+import { toLocalDateString } from './streak';
+import { formatScheduleDate } from './scheduleUtils';
 
-const API = "http://localhost:8000";
 const MODES = [
   { id: "quiz", label: "Quiz" },
   { id: "summary", label: "Summary" },
@@ -40,7 +41,6 @@ function parseFlashcards(raw) {
 }
 
 export default function RagStudy() {
-  useEffect(() => { markTodayAsStudied(); }, []);
   const fileRef = useRef(null);
   const [file, setFile] = useState(null);
   const [sessionId, setSessionId] = useState("");
@@ -63,8 +63,9 @@ export default function RagStudy() {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await axios.post(`${API}/rag/upload`, fd, {
+      const res = await api.post(`/rag/upload`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
+        timeout: LONG_AI_TIMEOUT_MS,
       });
       if (!res.data?.session_id) {
         setUploadErr("The backend did not return a session ID. Please try again.");
@@ -90,28 +91,33 @@ export default function RagStudy() {
       let response;
       let resultKey;
       if (mode === "quiz") {
-        response = await axios.post(`${API}/rag/quiz`, {
+        response = await api.post(`/rag/quiz`, {
           session_id: sessionId,
           num_questions: numQ,
-        });
+        }, { timeout: LONG_AI_TIMEOUT_MS });
         resultKey = "quiz";
       } else if (mode === "summary") {
-        response = await axios.post(`${API}/rag/summarize`, { session_id: sessionId });
+        response = await api.post(`/rag/summarize`, { session_id: sessionId }, { timeout: LONG_AI_TIMEOUT_MS });
         resultKey = "summary";
       } else if (mode === "flashcards") {
-        response = await axios.post(`${API}/rag/flashcards`, {
+        response = await api.post(`/rag/flashcards`, {
           session_id: sessionId,
           num_cards: numCards,
-        });
+        }, { timeout: LONG_AI_TIMEOUT_MS });
         resultKey = "flashcards";
       } else {
-        response = await axios.post(`${API}/rag/plan`, {
+        const startDate = toLocalDateString();
+        response = await api.post(`/rag/plan`, {
           session_id: sessionId,
+          start_date: startDate,
           exam_date: examDate,
-        });
+        }, { timeout: LONG_AI_TIMEOUT_MS });
         resultKey = "study_plan";
       }
-      setResult({ type: mode, raw: response.data?.[resultKey] ?? "No content was returned." });
+      const raw = mode === 'planner'
+        ? (response.data?.schedule ?? response.data?.[resultKey])
+        : response.data?.[resultKey];
+      setResult({ type: mode, raw: raw ?? "No content was returned." });
     } catch (err) {
       setError(
         err?.response?.data?.detail ||
@@ -200,8 +206,9 @@ export default function RagStudy() {
           onClick={handleUpload}
           disabled={!file || uploading}
         >
-          {uploading ? <><span className="spin" /> Uploading &amp; indexing…</> : "Upload & Index PDF"}
+          {uploading ? "Uploading & indexing…" : "Upload & Index PDF"}
         </button>
+          <AiThinking active={uploading} label="Reading and indexing your PDF…" />
 
         {sessionId && (
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.6, wordBreak: "break-all" }}>
@@ -275,6 +282,7 @@ export default function RagStudy() {
             >
               {loading ? <><span className="spin" /> Generating…</> : `Generate ${MODES.find(option => option.id === mode)?.label}`}
             </button>
+          <AiThinking active={loading} label="Preparing your study material…" />
           </div>
 
           {result && (
@@ -322,7 +330,27 @@ export default function RagStudy() {
               {result.type === "planner" && (
                 <div className="result-block">
                   <div className="result-block-label">Study Plan · Exam {examDate}</div>
-                  <p className="result-para" style={{ whiteSpace: "pre-wrap" }}>{asText(result.raw)}</p>
+                  {Array.isArray(result.raw) ? (
+                    <table className="schedule" aria-label="PDF study schedule">
+                      <thead className="schedule__head"><tr>
+                        <th className="schedule__th">Day</th><th className="schedule__th">Date</th>
+                        <th className="schedule__th">Task</th><th className="schedule__th">Duration</th>
+                      </tr></thead>
+                      <tbody>{result.raw.map((row, index) => (
+                        <tr className="schedule__row" key={`${row.date || index}-${index}`}>
+                          <td className="schedule__td schedule__td-day">{row.day || `Day ${index + 1}`}</td>
+                          <td className="schedule__td schedule__td-date">{formatScheduleDate(row.date)}</td>
+                          <td className="schedule__td schedule__td-task">
+                            {row.task || 'Task unavailable'}
+                            {row.topics?.length > 0 && <div className="schedule__topics">Topics: {row.topics.join(', ')}</div>}
+                          </td>
+                          <td className="schedule__td schedule__td-duration">{row.duration || 'Duration unavailable'}</td>
+                        </tr>
+                      ))}</tbody>
+                    </table>
+                  ) : (
+                    <p className="result-para" style={{ whiteSpace: "pre-wrap" }}>{asText(result.raw)}</p>
+                  )}
                 </div>
               )}
             </div>

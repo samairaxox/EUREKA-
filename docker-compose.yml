@@ -1,0 +1,33 @@
+# Local development stack: PostgreSQL + API. Run the React app with `npm start` in study-frontend/.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: eureka
+      POSTGRES_PASSWORD: eureka_dev_password
+      POSTGRES_DB: eureka_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - eureka-dev-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eureka -d eureka_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://eureka:eureka_dev_password@db:5432/eureka_dev
+      EUREKA_ENV: development
+      AUTO_MIGRATE: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+volumes:
+  eureka-dev-pgdata:
