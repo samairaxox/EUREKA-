@@ -1,6 +1,7 @@
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
+from llm_runtime import LLM_GATE
 import json, re, os
 
 load_dotenv()
@@ -38,5 +39,6 @@ def quiz_agent(topic: str, num_questions: int = 5) -> list:
         "- Just raw JSON array, nothing else"
     )
     chain = prompt | llm
-    result = chain.invoke({"topic": topic, "num_questions": num_questions})
+    with LLM_GATE:
+        result = chain.invoke({"topic": topic, "num_questions": num_questions})
     return safe_parse(result.content)
